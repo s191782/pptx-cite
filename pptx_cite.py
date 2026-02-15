@@ -612,8 +612,9 @@ class CitationProcessor:
                     # This handles edge cases where shape_type property raises an exception
                     try:
                         self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
-                    except Exception:
-                        # If processing as group also fails, skip this shape silently
+                    except (AttributeError, TypeError, KeyError):
+                        # Expected exceptions when shape doesn't support group operations
+                        # Skip this shape if it can't be processed as a group
                         pass
             
             # Process tables within GraphicFrame
