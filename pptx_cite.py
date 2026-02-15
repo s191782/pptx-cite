@@ -3,6 +3,8 @@
 PPTX Citation Manager - Replace LaTeX-style citations in PowerPoint files
 """
 
+import argparse
+import sys
 import re
 import yaml
 from pathlib import Path
@@ -13,6 +15,7 @@ from pptx.util import Pt, Inches
 
 # ANSI color codes for terminal output
 RESET = '\x1b[0m'
+BOLD = '\x1b[1m'
 RED = '\x1b[91m'
 GREEN = '\x1b[92m'
 YELLOW = '\x1b[93m'
@@ -1106,3 +1109,60 @@ def load_config(config_file: Optional[Path]) -> Dict:
             default_config.update(user_config)
     
     return default_config
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Replace LaTeX-style citations in PowerPoint files using BibTeX references'
+    )
+    parser.add_argument('pptx_file', type=Path, help='Path to the PowerPoint file (.pptx)')
+    parser.add_argument('bib_file', type=Path, nargs='?', help='Path to the BibTeX file (.bib). Defaults to the pptx filename with .bib extension')
+    parser.add_argument('-c', '--config', type=Path, help='Path to configuration file (optional)')
+    parser.add_argument('-o', '--output', type=Path, help='Output file path (optional)')
+    parser.add_argument('-s', '--start-number', type=int, default=1, 
+                        help='Starting number for numeric citation styles (default: 1)')
+    
+    args = parser.parse_args()
+    
+    # Validate PowerPoint file
+    if not args.pptx_file.exists():
+        print(f"Error: PowerPoint file not found: {args.pptx_file}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Default bib_file to pptx_file with .bib extension if not provided
+    if args.bib_file is None:
+        args.bib_file = args.pptx_file.with_suffix('.bib')
+    
+    # Validate BibTeX file
+    if not args.bib_file.exists():
+        print(f"Error: BibTeX file not found: {args.bib_file}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Load configuration
+    config = load_config(args.config)
+    
+    # Override citation_start_number from CLI if provided
+    config['citation_start_number'] = args.start_number
+    
+    print(f"Processing: {args.pptx_file}")
+    print(f"Using bibliography: {args.bib_file}")
+    
+    # Parse BibTeX file
+    bib_parser = BibTeXParser(args.bib_file)
+    print(f"Loaded {len(bib_parser.entries)} bibliography entries")
+    
+    # Process PowerPoint
+    processor = CitationProcessor(args.pptx_file, bib_parser, config)
+    processor.process()
+    processor.save(args.output)
+    
+    # Print citation count with bold if all entries are cited
+    num_citations = len(processor.cited_keys)
+    num_entries = len(bib_parser.entries)
+    if num_citations == num_entries:
+        print(f"Found {BOLD}{num_citations}{RESET} citations")
+    else:
+        print(f"Found {num_citations} citations")
+
+if __name__ == '__main__':
+    main()
