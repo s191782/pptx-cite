@@ -398,6 +398,89 @@ class TestCitationProcessorEdgeCases(unittest.TestCase):
         processor = CitationProcessor(pptx_file, self.bib_parser, self.config)
         # Should not raise error
         processor.process()
+    
+    def test_bibliography_overflow(self):
+        """Test bibliography overflow creates continuation slides correctly."""
+        # Create a BibTeX file with many entries to force overflow
+        large_bib_file = self.test_dir_path / "large_refs.bib"
+        bib_entries = []
+        # Generate 30 entries to ensure overflow on a typical slide
+        for i in range(1, 31):
+            bib_entries.append(f"""
+@article{{ref{i:03d},
+    author = {{Author{i}, First{i} and Coauthor{i}, Second{i}}},
+    title = {{A Very Long Title for Article Number {i} That Takes Up Space}},
+    journal = {{Journal of Testing and Verification}},
+    year = {{202{i % 10}}},
+    volume = {{{i}}},
+    pages = {{{i}--{i+10}}}
+}}""")
+        
+        large_bib_file.write_text('\n'.join(bib_entries))
+        large_bib_parser = BibTeXParser(large_bib_file)
+        
+        # Create a PPTX with citations to all entries
+        pptx_file = self.test_dir_path / "test_overflow.pptx"
+        prs = Presentation()
+        blank_slide_layout = prs.slide_layouts[6]
+        
+        # Add citation slide
+        citation_slide = prs.slides.add_slide(blank_slide_layout)
+        textbox = citation_slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(1))
+        # Reference all entries
+        citations = ', '.join([f'ref{i:03d}' for i in range(1, 31)])
+        textbox.text_frame.text = f"References: \\cite{{{citations}}}"
+        
+        # Add bibliography slide with small text box to force overflow
+        bib_slide = prs.slides.add_slide(blank_slide_layout)
+        # Use a smaller height to force overflow
+        bib_textbox = bib_slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(2))
+        bib_textbox.text_frame.text = "\\bibliography"
+        
+        prs.save(str(pptx_file))
+        
+        # Process the presentation
+        processor = CitationProcessor(pptx_file, large_bib_parser, self.config)
+        processor.process()
+        
+        # Save and reload to verify the structure
+        output_file = self.test_dir_path / "test_overflow_output.pptx"
+        processor.save(str(output_file))
+        
+        # Reload and verify
+        result_prs = Presentation(str(output_file))
+        
+        # Should have more than 2 slides (original citation slide + bibliography + overflow)
+        self.assertGreater(len(result_prs.slides), 2, 
+                          "Should have created continuation slides for bibliography overflow")
+        
+        # Verify numbering is consistent across slides
+        # Check that bibliography slides contain numbered entries
+        bib_slide_count = 0
+        found_numbers = set()
+        
+        for slide in result_prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, 'text') and '[' in shape.text:
+                    # This appears to be a bibliography slide with numeric citations
+                    if any(f'[{i}]' in shape.text for i in range(1, 31)):
+                        bib_slide_count += 1
+                        # Extract numbers found on this slide
+                        for i in range(1, 31):
+                            if f'[{i}]' in shape.text:
+                                found_numbers.add(i)
+        
+        # Should have multiple bibliography slides
+        self.assertGreaterEqual(bib_slide_count, 1, 
+                               "Should have at least one bibliography slide")
+        
+        # All 30 entries should be numbered
+        self.assertEqual(len(found_numbers), 30,
+                        f"All 30 entries should be in bibliography, found {len(found_numbers)}")
+        
+        # Numbers should be sequential from 1 to 30
+        self.assertEqual(found_numbers, set(range(1, 31)),
+                        "Bibliography numbering should be sequential from 1 to 30")
 
 
 if __name__ == '__main__':
