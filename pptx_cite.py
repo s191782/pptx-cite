@@ -7,7 +7,7 @@ import argparse
 import sys
 import re
 import yaml
-from copy import copy, deepcopy
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Optional, List, Set
 from pptx import Presentation
@@ -58,7 +58,9 @@ class BibTeXParser:
             fields_str = content[start_pos:pos-1]
             
             # Parse fields with proper brace matching
-            fields = {'type': entry_type}
+            # Store the BibTeX entry type under a dedicated key to avoid
+            # collisions with a user-defined `type = {...}` field.
+            fields = {'entry_type': entry_type}
             
             # Find field assignments
             field_start_pattern = r'(\w+)\s*=\s*'
@@ -243,7 +245,7 @@ class BibTeXParser:
                 return f"{key}: Entry not found"
         
         # Format based on entry type
-        entry_type = entry.get('type', 'misc')
+        entry_type = entry.get('entry_type', 'misc')
         result = []
         
         # Number (only for numeric styles)
@@ -541,6 +543,7 @@ class CitationProcessor:
         self.cited_keys: List[str] = []  # Track order of citations
         self.cited_set: Set[str] = set()  # Track unique citations
         self.missing_citations: Dict[str, List[int]] = {}  # Track missing citations with slide numbers
+        self._citation_index_map: Dict[str, int] = {}  # Precomputed index map for numeric styles
     
     def process(self) -> None:
         """Process all slides for citations and bibliography commands."""
@@ -605,8 +608,9 @@ class CitationProcessor:
                     # This handles edge cases where shape_type property raises an exception
                     try:
                         self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
-                    except Exception:
-                        # If processing as group also fails, skip this shape silently
+                    except (AttributeError, TypeError, KeyError):
+                        # Expected exceptions when shape doesn't support group operations
+                        # Skip this shape if it can't be processed as a group
                         pass
             
             # Process tables within GraphicFrame
@@ -664,6 +668,8 @@ class CitationProcessor:
                         if key not in self.cited_set:
                             self.cited_keys.append(key)
                             self.cited_set.add(key)
+                            # Build index map incrementally for new keys to avoid O(n) lookups
+                            self._citation_index_map[key] = len(self._citation_index_map)
                         # Check if citation exists in bibliography and track missing ones
                         if not self.bib_parser.get_entry(key):
                             if key not in self.missing_citations:
@@ -681,20 +687,19 @@ class CitationProcessor:
                     keys_str = match.group(1)
                     keys = [k.strip() for k in keys_str.split(',')]
                     
-                    # Format citation
-                    citations = [self.bib_parser.format_citation(key, cite_style) for key in keys]
-                    
-                    if cite_style == 'numeric':
-                        # Replace with numeric references in square brackets
+                    if cite_style in ('numeric', 'numeric-parens'):
+                        # Numeric styles: use precomputed index mapping to avoid O(n) lookups
                         citation_start = self.config.get('citation_start_number', 1)
-                        numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
-                        replacement = f"[{', '.join(numbers)}]"
-                    elif cite_style == 'numeric-parens':
-                        # Replace with numeric references in parentheses
-                        citation_start = self.config.get('citation_start_number', 1)
-                        numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
-                        replacement = f"({', '.join(numbers)})"
+                        numbers = [str(self._citation_index_map[key] + citation_start) for key in keys]
+                        if cite_style == 'numeric':
+                            # Replace with numeric references in square brackets
+                            replacement = f"[{', '.join(numbers)}]"
+                        else:
+                            # numeric-parens: replace with numeric references in parentheses
+                            replacement = f"({', '.join(numbers)})"
                     else:
+                        # Non-numeric styles: format full citations
+                        citations = [self.bib_parser.format_citation(key, cite_style) for key in keys]
                         replacement = ', '.join(citations)
                 
                 # Replace in the paragraph
@@ -1110,6 +1115,12 @@ def load_config(config_file: Optional[Path]) -> Dict:
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 user_config = yaml.safe_load(f)
+                # Treat an empty configuration file as an empty dict; reject non-dict types
+                if user_config is None:
+                    user_config = {}
+                elif not isinstance(user_config, dict):
+                    print(f"{RED}Error: Configuration file '{config_file}' must be a valid YAML dictionary.{RESET}")
+                    sys.exit(1)
                 default_config.update(user_config)
         except yaml.YAMLError as e:
             print(f"{RED}Error: Configuration file '{config_file}' contains invalid YAML syntax:{RESET}")

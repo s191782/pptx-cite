@@ -125,7 +125,7 @@ class TestBibTeXParser(unittest.TestCase):
         entry = parser.get_entry('smith2024')
         
         self.assertIsNotNone(entry)
-        self.assertEqual(entry['type'], 'article')
+        self.assertEqual(entry['entry_type'], 'article')
         self.assertEqual(entry['author'], 'John Smith and Jane Doe')
         self.assertEqual(entry['title'], 'Test Article')
         self.assertEqual(entry['journal'], 'Test Journal')
