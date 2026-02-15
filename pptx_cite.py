@@ -7,6 +7,7 @@ import argparse
 import sys
 import re
 import yaml
+from copy import copy, deepcopy
 from pathlib import Path
 from typing import Dict, Optional, List, Set
 from pptx import Presentation
@@ -599,9 +600,14 @@ class CitationProcessor:
                     # Check if it's a GROUP (type 6)
                     if shape.shape_type == MSO_SHAPE_TYPE.GROUP or shape.shape_type == 6:
                         self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
-                except Exception:
-                    # Try to process as group anyway if it has shapes
-                    self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
+                except (AttributeError, KeyError, TypeError):
+                    # Some shapes may have unreliable shape_type access, try processing as group anyway
+                    # This handles edge cases where shape_type property raises an exception
+                    try:
+                        self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
+                    except Exception:
+                        # If processing as group also fails, skip this shape silently
+                        pass
             
             # Process tables within GraphicFrame
             if hasattr(shape, 'has_table') and shape.has_table:
@@ -865,7 +871,7 @@ class CitationProcessor:
                             run.font.bold = template_run.font.bold
                         if template_run.font.italic is not None:
                             run.font.italic = template_run.font.italic
-                        if template_run.font.color.type is not None:
+                        if template_run.font.color and template_run.font.color.type is not None:
                             run.font.color.rgb = template_run.font.color.rgb
                 
                 # Add remaining entries for this slide
@@ -892,12 +898,11 @@ class CitationProcessor:
                             run.font.bold = template_run.font.bold
                         if template_run.font.italic is not None:
                             run.font.italic = template_run.font.italic
-                        if template_run.font.color.type is not None:
+                        if template_run.font.color and template_run.font.color.type is not None:
                             run.font.color.rgb = template_run.font.color.rgb
                     
                     # Copy complete paragraph properties at XML level
                     if template_para:
-                        from copy import deepcopy
                         template_pPr = template_para._element.pPr
                         
                         if template_pPr is not None:
@@ -925,7 +930,6 @@ class CitationProcessor:
                     
                     while remaining:
                         # Duplicate the entire original slide to preserve all formatting, background, etc.
-                        import copy
                         
                         # Create a new slide with the same layout
                         new_slide = self.prs.slides.add_slide(slide.slide_layout)
@@ -935,7 +939,7 @@ class CitationProcessor:
                             # Get shape XML element
                             el = orig_shape.element
                             # Create a deep copy of the shape
-                            new_el = copy.deepcopy(el)
+                            new_el = deepcopy(el)
                             # Add to new slide
                             new_slide.shapes._spTree.insert_element_before(new_el, 'p:extLst')
                         
@@ -1033,12 +1037,11 @@ class CitationProcessor:
                                     run.font.bold = template_run.font.bold
                                 if template_run.font.italic is not None:
                                     run.font.italic = template_run.font.italic
-                                if template_run.font.color.type is not None:
+                                if template_run.font.color and template_run.font.color.type is not None:
                                     run.font.color.rgb = template_run.font.color.rgb
                             
                             # Copy paragraph properties from template
                             if template_para:
-                                from copy import deepcopy
                                 template_pPr = template_para._element.pPr
                                 if template_pPr is not None:
                                     new_pPr = p._element.pPr
@@ -1104,9 +1107,17 @@ def load_config(config_file: Optional[Path]) -> Dict:
     }
     
     if config_file and config_file.exists():
-        with open(config_file, 'r', encoding='utf-8') as f:
-            user_config = yaml.safe_load(f)
-            default_config.update(user_config)
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                user_config = yaml.safe_load(f)
+                default_config.update(user_config)
+        except yaml.YAMLError as e:
+            print(f"{RED}Error: Configuration file '{config_file}' contains invalid YAML syntax:{RESET}")
+            print(f"{RED}{e}{RESET}")
+            sys.exit(1)
+        except (IOError, OSError, PermissionError) as e:
+            print(f"{RED}Error: Failed to read configuration file '{config_file}': {e}{RESET}")
+            sys.exit(1)
     
     return default_config
 
