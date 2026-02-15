@@ -1122,6 +1122,13 @@ def load_config(config_file: Optional[Path]) -> Dict:
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 user_config = yaml.safe_load(f)
+                # Treat an empty configuration file as an empty dict
+                if user_config is None:
+                    user_config = {}
+                # Ensure the configuration is a mapping before updating defaults
+                if not isinstance(user_config, dict):
+                    print(f"{RED}Error: Configuration file '{config_file}' must contain a mapping (YAML dictionary) at the top level.{RESET}")
+                    sys.exit(1)
                 default_config.update(user_config)
         except yaml.YAMLError as e:
             print(f"{RED}Error: Configuration file '{config_file}' contains invalid YAML syntax:{RESET}")
