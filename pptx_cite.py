@@ -58,7 +58,7 @@ class BibTeXParser:
             fields_str = content[start_pos:pos-1]
             
             # Parse fields with proper brace matching
-            # Store the BibTeX entry kind under a dedicated key to avoid
+            # Store the BibTeX entry type under a dedicated key to avoid
             # collisions with a user-defined `type = {...}` field.
             fields = {'entry_type': entry_type}
             
@@ -668,6 +668,8 @@ class CitationProcessor:
                         if key not in self.cited_set:
                             self.cited_keys.append(key)
                             self.cited_set.add(key)
+                            # Build index map incrementally for new keys to avoid O(n) lookups
+                            self._citation_index_map[key] = len(self._citation_index_map)
                         # Check if citation exists in bibliography and track missing ones
                         if not self.bib_parser.get_entry(key):
                             if key not in self.missing_citations:
@@ -675,12 +677,6 @@ class CitationProcessor:
                             # Add slide number (1-indexed for user display)
                             if slide_idx + 1 not in self.missing_citations[key]:
                                 self.missing_citations[key].append(slide_idx + 1)
-                
-                # Build/update index map for this paragraph's citations before replacement
-                # This avoids O(n) lookups during replacement
-                for key in self.cited_keys:
-                    if key not in self._citation_index_map:
-                        self._citation_index_map[key] = len(self._citation_index_map)
             
             # Second pass: replace citations in reverse order to maintain text indices
             for match in reversed(matches):
