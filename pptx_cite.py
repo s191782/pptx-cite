@@ -4,6 +4,7 @@ PPTX Citation Manager - Replace LaTeX-style citations in PowerPoint files
 """
 
 import re
+import yaml
 from pathlib import Path
 from typing import Dict, Optional, List, Set
 from pptx import Presentation
@@ -1090,3 +1091,18 @@ class CitationProcessor:
         
         self.prs.save(str(output_file))
         print(f"Saved to: {output_file}")
+
+def load_config(config_file: Optional[Path]) -> Dict:
+    """Load configuration from YAML file."""
+    default_config = {
+        'cite_command': r'\cite',
+        'bibliography_command': r'\bibliography',
+        'cite_style': 'numeric',  # Options: numeric, numeric-parens, author-year, author
+    }
+    
+    if config_file and config_file.exists():
+        with open(config_file, 'r', encoding='utf-8') as f:
+            user_config = yaml.safe_load(f)
+            default_config.update(user_config)
+    
+    return default_config
