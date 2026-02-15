@@ -58,7 +58,9 @@ class BibTeXParser:
             fields_str = content[start_pos:pos-1]
             
             # Parse fields with proper brace matching
-            fields = {'type': entry_type}
+            # Store the BibTeX entry kind under a dedicated key to avoid
+            # collisions with a user-defined `type = {...}` field.
+            fields = {'entry_type': entry_type}
             
             # Find field assignments
             field_start_pattern = r'(\w+)\s*=\s*'
@@ -243,7 +245,7 @@ class BibTeXParser:
                 return f"{key}: Entry not found"
         
         # Format based on entry type
-        entry_type = entry.get('type', 'misc')
+        entry_type = entry.get('entry_type', 'misc')
         result = []
         
         # Number (only for numeric styles)
