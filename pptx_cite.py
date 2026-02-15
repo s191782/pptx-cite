@@ -946,29 +946,19 @@ class CitationProcessor:
                     start_idx = len(entries_on_this_slide) + citation_start
                     
                     while remaining:
-                        # Create a new slide with the same layout as the original bibliography slide.
-                        # The layout carries background and placeholder formatting, which is safely managed
-                        # by python-pptx without needing to clone raw XML.
+                        # Duplicate the entire original slide to preserve all formatting, background, etc.
+                        
+                        # Create a new slide with the same layout
                         new_slide = self.prs.slides.add_slide(slide.slide_layout)
                         
-                        # Optionally copy the title text using the high-level API (if both slides have a title).
-                        try:
-                            orig_title = slide.shapes.title
-                        except Exception:
-                            orig_title = None
-                        try:
-                            new_title = new_slide.shapes.title
-                        except Exception:
-                            new_title = None
-                        if orig_title is not None and new_title is not None:
-                            new_title.text = orig_title.text
-                        
-                        # Add a text box for the bibliography content at the same position as the original
-                        # Use the high-level API to safely create the shape
-                        new_text_box = new_slide.shapes.add_textbox(
-                            shape.left, shape.top, shape.width, shape.height
-                        )
-                        new_text_frame = new_text_box.text_frame
+                        # Copy all shapes from the original slide to the new slide
+                        for orig_shape in slide.shapes:
+                            # Get shape XML element
+                            el = orig_shape.element
+                            # Create a deep copy of the shape
+                            new_el = deepcopy(el)
+                            # Add to new slide
+                            new_slide.shapes._spTree.insert_element_before(new_el, 'p:extLst')
                         
                         # Then move it to the correct position (right after current slide + already created overflow slides)
                         target_position = current_slide_index + slides_created
@@ -984,6 +974,34 @@ class CitationProcessor:
                             slide_id_list.insert(target_position, last_slide)
                         
                         slides_created += 1
+                        
+                        # Find the text frame with bibliography in the new slide and remove/clear other text frames
+                        new_text_frame = None
+                        shapes_to_remove = []
+                        
+                        for new_shape in new_slide.shapes:
+                            if hasattr(new_shape, "text_frame"):
+                                # Check if this shape corresponds to the original bibliography shape
+                                if (hasattr(new_shape, 'left') and hasattr(new_shape, 'top') and
+                                    new_shape.left == shape.left and new_shape.top == shape.top):
+                                    new_text_frame = new_shape.text_frame
+                                else:
+                                    # This is a different text frame - check if it's empty or has content
+                                    if new_shape.text_frame.text.strip() and bib_command not in new_shape.text_frame.text:
+                                        # Has content but not bibliography - keep it
+                                        pass
+                                    else:
+                                        # Empty or was bibliography placeholder - mark for removal
+                                        shapes_to_remove.append(new_shape)
+                        
+                        # Remove unused shapes
+                        for shape_to_remove in shapes_to_remove:
+                            sp = shape_to_remove.element
+                            sp.getparent().remove(sp)
+                        
+                        if not new_text_frame:
+                            print(f"  {YELLOW}Warning:{RESET} Could not find bibliography text frame in duplicated slide")
+                            break
                         
                         # Clear the bibliography text frame completely (no blank lines)
                         new_text_frame.clear()
