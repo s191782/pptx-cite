@@ -10,7 +10,7 @@ A Python tool to manage LaTeX-style citations in PowerPoint presentations using 
 - **BibTeX/BibLaTeX Support**: Works with standard .bib files, supports 16+ entry types
 - **Format Preservation**: Maintains text formatting, bullets, numbering, and styling
 - **Bibliography Overflow**: Automatically creates continuation slides if bibliography doesn't fit
-- **Smart Author Formatting**: Handles complex author names with curly brackets, uses "et al." for >3 authors
+- **Smart Author Formatting**: Handles complex author names with curly brackets, and uses "et al." where appropriate for multi-author references
 - **Citation Order Preservation**: Citations numbered in order of first appearance, not alphabetically
 - **Broad Shape Support**: Processes text boxes, shapes, grouped shapes, and tables
 - **Optional .bib File**: Defaults to presentation name with .bib extension
