@@ -244,7 +244,7 @@ If you have citations in SmartArt graphics:
 ## Command-Line Options
 
 ```
-usage: pptx_cite.py [-h] [-c CONFIG] [-o OUTPUT] pptx_file [bib_file]
+usage: pptx_cite.py [-h] [-c CONFIG] [-o OUTPUT] [-s START_NUMBER] pptx_file [bib_file]
 
 positional arguments:
   pptx_file             Path to the PowerPoint file (.pptx)

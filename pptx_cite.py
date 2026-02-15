@@ -238,9 +238,9 @@ class BibTeXParser:
         entry = self.get_entry(key)
         if not entry:
             if style == 'numeric':
-                return f"[{number if number else '?'}] {key}: Entry not found"
+                return f"[{number if number is not None else '?'}] {key}: Entry not found"
             elif style == 'numeric-parens':
-                return f"({number if number else '?'}) {key}: Entry not found"
+                return f"({number if number is not None else '?'}) {key}: Entry not found"
             else:
                 return f"{key}: Entry not found"
         
@@ -249,7 +249,7 @@ class BibTeXParser:
         result = []
         
         # Number (only for numeric styles)
-        if number and style in ['numeric', 'numeric-parens']:
+        if number is not None and style in ['numeric', 'numeric-parens']:
             if style == 'numeric':
                 result.append(f"[{number}]")
             else:  # numeric-parens
@@ -628,7 +628,7 @@ class CitationProcessor:
             pass
     
     def _process_group_shape(self, group_shape, cite_command: str, cite_style: str, slide_idx: int, remove_only: bool = False) -> None:
-        """Process citations in grouped shapes (including SmartArt)."""
+        """Process citations in grouped shapes."""
         try:
             # Try to access shapes in the group
             if hasattr(group_shape, 'shapes'):
