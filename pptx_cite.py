@@ -562,10 +562,6 @@ class CitationProcessor:
             if not self._slide_contains_bibliography_command(slide, bib_command):
                 self._process_citations_in_slide(slide, slide_idx, remove_only=not has_bibliography)
         
-        # Build citation index map after collecting all citations
-        # This map is used for numeric styles to avoid repeated O(n) lookups
-        self._citation_index_map = {key: idx for idx, key in enumerate(self.cited_keys)}
-        
         # Print warnings for missing citations
         if self.missing_citations:
             for key, slide_numbers in sorted(self.missing_citations.items()):
@@ -679,6 +675,12 @@ class CitationProcessor:
                             # Add slide number (1-indexed for user display)
                             if slide_idx + 1 not in self.missing_citations[key]:
                                 self.missing_citations[key].append(slide_idx + 1)
+                
+                # Build/update index map for this paragraph's citations before replacement
+                # This avoids O(n) lookups during replacement
+                for key in self.cited_keys:
+                    if key not in self._citation_index_map:
+                        self._citation_index_map[key] = len(self._citation_index_map)
             
             # Second pass: replace citations in reverse order to maintain text indices
             for match in reversed(matches):
@@ -690,14 +692,9 @@ class CitationProcessor:
                     keys = [k.strip() for k in keys_str.split(',')]
                     
                     if cite_style in ('numeric', 'numeric-parens'):
-                        # Numeric styles: use precomputed index mapping to avoid quadratic lookups
+                        # Numeric styles: use precomputed index mapping to avoid O(n) lookups
                         citation_start = self.config.get('citation_start_number', 1)
-                        # Use precomputed map if available, otherwise fall back to list.index()
-                        if self._citation_index_map:
-                            numbers = [str(self._citation_index_map[key] + citation_start) for key in keys]
-                        else:
-                            numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
-                        
+                        numbers = [str(self._citation_index_map[key] + citation_start) for key in keys]
                         if cite_style == 'numeric':
                             # Replace with numeric references in square brackets
                             replacement = f"[{', '.join(numbers)}]"
@@ -1127,7 +1124,7 @@ def load_config(config_file: Optional[Path]) -> Dict:
                     user_config = {}
                 # Ensure the configuration is a mapping before updating defaults
                 if not isinstance(user_config, dict):
-                    print(f"{RED}Error: Configuration file '{config_file}' must contain a mapping (YAML dictionary) at the top level.{RESET}")
+                    print(f"{RED}Error: Configuration file '{config_file}' must be a valid YAML dictionary.{RESET}")
                     sys.exit(1)
                 default_config.update(user_config)
         except yaml.YAMLError as e:
