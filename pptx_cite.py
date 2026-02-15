@@ -556,11 +556,11 @@ class CitationProcessor:
                 has_bibliography = True
                 break
         
-        # First pass: collect citations
+        # First pass: collect citations from all slides
         slides_to_process = list(enumerate(self.prs.slides))
         for slide_idx, slide in slides_to_process:
-            if not self._slide_contains_bibliography_command(slide, bib_command):
-                self._process_citations_in_slide(slide, slide_idx, remove_only=not has_bibliography)
+            # Process citations on all slides, but exclude shapes containing bibliography command
+            self._process_citations_in_slide(slide, slide_idx, remove_only=not has_bibliography, skip_bib_shapes=True)
         
         # Print warnings for missing citations
         if self.missing_citations:
@@ -587,12 +587,24 @@ class CitationProcessor:
                     return True
         return False
     
-    def _process_citations_in_slide(self, slide, slide_idx: int, remove_only: bool = False) -> None:
-        """Process citations in a single slide."""
+    def _process_citations_in_slide(self, slide, slide_idx: int, remove_only: bool = False, skip_bib_shapes: bool = False) -> None:
+        """Process citations in a single slide.
+        
+        Args:
+            slide: The slide to process
+            slide_idx: The index of the slide
+            remove_only: If True, remove citations without replacing them
+            skip_bib_shapes: If True, skip shapes that contain the bibliography command
+        """
         cite_command = self.config.get('cite_command', r'\cite')
         cite_style = self.config.get('cite_style', 'numeric')
+        bib_command = self.config.get('bibliography_command', r'\bibliography')
         
         for shape in slide.shapes:
+            # Skip shapes containing bibliography command if requested
+            if skip_bib_shapes and hasattr(shape, "text") and bib_command in shape.text:
+                continue
+            
             # Process regular text frames
             if hasattr(shape, "text_frame"):
                 self._process_text_frame(shape.text_frame, cite_command, cite_style, slide_idx, remove_only)
