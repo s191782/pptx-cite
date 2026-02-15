@@ -1,0 +1,14 @@
+# PPTX Citation Configuration File
+
+# Citation command to search for in slides (LaTeX style)
+cite_command: '\cite'
+
+# Bibliography command to mark where bibliography should be inserted
+bibliography_command: '\bibliography'
+
+# Citation style:
+#   - 'numeric': Citations as [1], [2], etc.
+#   - 'numeric-parens': Citations as (1), (2), etc.
+#   - 'author-year': Citations as (Smith, 2020)
+#   - 'author': Citations as (Smith)
+cite_style: 'numeric'
