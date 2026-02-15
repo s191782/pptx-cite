@@ -543,6 +543,7 @@ class CitationProcessor:
         self.cited_keys: List[str] = []  # Track order of citations
         self.cited_set: Set[str] = set()  # Track unique citations
         self.missing_citations: Dict[str, List[int]] = {}  # Track missing citations with slide numbers
+        self._citation_index_map: Dict[str, int] = {}  # Precomputed index map for numeric styles
     
     def process(self) -> None:
         """Process all slides for citations and bibliography commands."""
@@ -560,6 +561,10 @@ class CitationProcessor:
         for slide_idx, slide in slides_to_process:
             if not self._slide_contains_bibliography_command(slide, bib_command):
                 self._process_citations_in_slide(slide, slide_idx, remove_only=not has_bibliography)
+        
+        # Build citation index map after collecting all citations
+        # This map is used for numeric styles to avoid repeated O(n) lookups
+        self._citation_index_map = {key: idx for idx, key in enumerate(self.cited_keys)}
         
         # Print warnings for missing citations
         if self.missing_citations:
@@ -683,20 +688,24 @@ class CitationProcessor:
                     keys_str = match.group(1)
                     keys = [k.strip() for k in keys_str.split(',')]
                     
-                    # Format citation
-                    citations = [self.bib_parser.format_citation(key, cite_style) for key in keys]
-                    
-                    if cite_style == 'numeric':
-                        # Replace with numeric references in square brackets
+                    if cite_style in ('numeric', 'numeric-parens'):
+                        # Numeric styles: use precomputed index mapping to avoid quadratic lookups
                         citation_start = self.config.get('citation_start_number', 1)
-                        numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
-                        replacement = f"[{', '.join(numbers)}]"
-                    elif cite_style == 'numeric-parens':
-                        # Replace with numeric references in parentheses
-                        citation_start = self.config.get('citation_start_number', 1)
-                        numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
-                        replacement = f"({', '.join(numbers)})"
+                        # Use precomputed map if available, otherwise fall back to list.index()
+                        if self._citation_index_map:
+                            numbers = [str(self._citation_index_map[key] + citation_start) for key in keys]
+                        else:
+                            numbers = [str(self.cited_keys.index(key) + citation_start) for key in keys]
+                        
+                        if cite_style == 'numeric':
+                            # Replace with numeric references in square brackets
+                            replacement = f"[{', '.join(numbers)}]"
+                        else:
+                            # numeric-parens: replace with numeric references in parentheses
+                            replacement = f"({', '.join(numbers)})"
                     else:
+                        # Non-numeric styles: format full citations
+                        citations = [self.bib_parser.format_citation(key, cite_style) for key in keys]
                         replacement = ', '.join(citations)
                 
                 # Replace in the paragraph
