@@ -7,7 +7,7 @@ import argparse
 import sys
 import re
 import yaml
-from copy import copy, deepcopy
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Optional, List, Set
 from pptx import Presentation
