@@ -4,11 +4,10 @@ PPTX Citation Manager - Replace LaTeX-style citations in PowerPoint files
 """
 
 import argparse
-import copy
 import sys
 import re
 import yaml
-from copy import deepcopy
+from copy import copy, deepcopy
 from pathlib import Path
 from typing import Dict, Optional, List, Set
 from pptx import Presentation
@@ -601,7 +600,7 @@ class CitationProcessor:
                     # Check if it's a GROUP (type 6)
                     if shape.shape_type == MSO_SHAPE_TYPE.GROUP or shape.shape_type == 6:
                         self._process_group_shape(shape, cite_command, cite_style, slide_idx, remove_only)
-                except (AttributeError, KeyError, TypeError) as e:
+                except (AttributeError, KeyError, TypeError):
                     # Some shapes may have unreliable shape_type access, try processing as group anyway
                     # This handles edge cases where shape_type property raises an exception
                     try:
@@ -940,7 +939,7 @@ class CitationProcessor:
                             # Get shape XML element
                             el = orig_shape.element
                             # Create a deep copy of the shape
-                            new_el = copy.deepcopy(el)
+                            new_el = deepcopy(el)
                             # Add to new slide
                             new_slide.shapes._spTree.insert_element_before(new_el, 'p:extLst')
                         
@@ -1116,8 +1115,8 @@ def load_config(config_file: Optional[Path]) -> Dict:
             print(f"{RED}Error: Configuration file '{config_file}' contains invalid YAML syntax:{RESET}")
             print(f"{RED}{e}{RESET}")
             sys.exit(1)
-        except Exception as e:
-            print(f"{RED}Error: Failed to load configuration file '{config_file}': {e}{RESET}")
+        except (IOError, OSError, PermissionError) as e:
+            print(f"{RED}Error: Failed to read configuration file '{config_file}': {e}{RESET}")
             sys.exit(1)
     
     return default_config

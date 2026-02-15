@@ -5,12 +5,13 @@ Integration tests for CitationProcessor class.
 import unittest
 import tempfile
 import shutil
+import sys
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add parent directory to path for imports (needed for standalone test execution)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pptx_cite import BibTeXParser, CitationProcessor, load_config
 
