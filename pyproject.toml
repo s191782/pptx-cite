@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pptx-citation-manager"
-version = "1.0.0"
+version = "1.0.1"
 description = "Replace LaTeX-style citations in PowerPoint presentations using BibTeX"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ dependencies = [
     "python-pptx>=0.6.21",
     "PyYAML>=6.0",
 ]
-license = { text = "MIT" }
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -23,3 +23,6 @@ classifiers = [
 
 [tool.setuptools]
 packages = ["pptx_cite"]
+
+[project.scripts]
+pptx-citation-manager = "pptx_cite:main"
