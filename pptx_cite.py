@@ -4,15 +4,15 @@ PPTX Citation Manager - Replace LaTeX-style citations in PowerPoint files
 """
 
 import argparse
-import sys
 import re
-import yaml
+import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Optional, List, Set
+
+import yaml
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.util import Pt, Inches
+from pptx.util import Inches, Pt
 
 # ANSI color codes for terminal output
 RESET = '\x1b[0m'
@@ -26,7 +26,7 @@ class BibTeXParser:
     
     def __init__(self, bib_file: Path):
         self.bib_file = bib_file
-        self.entries: Dict[str, Dict[str, str]] = {}
+        self.entries: dict[str, dict[str, str]] = {}
         self.parse()
     
     def parse(self):
@@ -127,11 +127,11 @@ class BibTeXParser:
         value = value.replace('{', '').replace('}', '')
         return value.strip()
     
-    def get_entry(self, key: str) -> Optional[Dict[str, str]]:
+    def get_entry(self, key: str) -> dict[str, str] | None:
         """Get a bibliography entry by its cite key."""
         return self.entries.get(key)
     
-    def _get_year(self, entry: Dict[str, str]) -> Optional[str]:
+    def _get_year(self, entry: dict[str, str]) -> str | None:
         """Extract year from entry, handling both 'year' and 'date' fields."""
         if 'year' in entry:
             return entry['year']
@@ -157,7 +157,7 @@ class BibTeXParser:
         name = ' '.join(name.split())
         return name.strip()
     
-    def _parse_authors(self, author_string: str) -> List[str]:
+    def _parse_authors(self, author_string: str) -> list[str]:
         """Parse author string into list of author names."""
         if not author_string:
             return []
@@ -233,7 +233,7 @@ class BibTeXParser:
         else:
             return f"[{key}]"
     
-    def format_bibliography_entry(self, key: str, number: Optional[int] = None, style: str = 'numeric') -> str:
+    def format_bibliography_entry(self, key: str, number: int | None = None, style: str = 'numeric') -> str:
         """Format a full bibliography entry."""
         entry = self.get_entry(key)
         if not entry:
@@ -535,15 +535,15 @@ class BibTeXParser:
 class CitationProcessor:
     """Process citations in PowerPoint presentations."""
     
-    def __init__(self, pptx_file: Path, bib_parser: BibTeXParser, config: Dict):
+    def __init__(self, pptx_file: Path, bib_parser: BibTeXParser, config: dict):
         self.pptx_file = pptx_file
         self.bib_parser = bib_parser
         self.config = config
         self.prs = Presentation(str(pptx_file))
-        self.cited_keys: List[str] = []  # Track order of citations
-        self.cited_set: Set[str] = set()  # Track unique citations
-        self.missing_citations: Dict[str, List[int]] = {}  # Track missing citations with slide numbers
-        self._citation_index_map: Dict[str, int] = {}  # Precomputed index map for numeric styles
+        self.cited_keys: list[str] = []  # Track order of citations
+        self.cited_set: set[str] = set()  # Track unique citations
+        self.missing_citations: dict[str, list[int]] = {}  # Track missing citations with slide numbers
+        self._citation_index_map: dict[str, int] = {}  # Precomputed index map for numeric styles
     
     def process(self) -> None:
         """Process all slides for citations and bibliography commands."""
@@ -582,9 +582,8 @@ class CitationProcessor:
     def _slide_contains_bibliography_command(self, slide, command: str) -> bool:
         """Check if a slide contains the bibliography command."""
         for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                if command in shape.text:
-                    return True
+            if hasattr(shape, "text") and command in shape.text:
+                return True
         return False
     
     def _process_citations_in_slide(self, slide, slide_idx: int, remove_only: bool = False, skip_bib_shapes: bool = False) -> None:
@@ -1107,7 +1106,7 @@ class CitationProcessor:
         
         return 0
     
-    def save(self, output_file: Optional[Path] = None) -> None:
+    def save(self, output_file: Path | None = None) -> None:
         """Save the modified presentation."""
         if output_file is None:
             output_file = self.pptx_file.parent / f"{self.pptx_file.stem}_cited{self.pptx_file.suffix}"
@@ -1115,7 +1114,7 @@ class CitationProcessor:
         self.prs.save(str(output_file))
         print(f"Saved to: {output_file}")
 
-def load_config(config_file: Optional[Path]) -> Dict:
+def load_config(config_file: Path | None) -> dict:
     """Load configuration from YAML file."""
     default_config = {
         'cite_command': r'\cite',
@@ -1138,7 +1137,7 @@ def load_config(config_file: Optional[Path]) -> Dict:
             print(f"{RED}Error: Configuration file '{config_file}' contains invalid YAML syntax:{RESET}")
             print(f"{RED}{e}{RESET}")
             sys.exit(1)
-        except (IOError, OSError, PermissionError) as e:
+        except (OSError, PermissionError) as e:
             print(f"{RED}Error: Failed to read configuration file '{config_file}': {e}{RESET}")
             sys.exit(1)
     
