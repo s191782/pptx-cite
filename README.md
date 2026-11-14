@@ -19,14 +19,14 @@ A Python tool to manage LaTeX-style citations in PowerPoint presentations using 
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install as package
+pip install .
 
 # Process your presentation (uses presentation.bib automatically)
-python pptx_cite.py presentation.pptx
+python -m pptx_cite presentation.pptx
 
 # Or specify a different .bib file
-python pptx_cite.py presentation.pptx references.bib
+python -m pptx_cite presentation.pptx references.bib
 ```
 
 ## Usage
@@ -35,10 +35,10 @@ python pptx_cite.py presentation.pptx references.bib
 
 ```bash
 # Uses presentation.bib automatically
-python pptx_cite.py presentation.pptx
+python -m pptx_cite presentation.pptx
 
 # Or specify a different .bib file
-python pptx_cite.py presentation.pptx references.bib
+python -m pptx_cite presentation.pptx references.bib
 ```
 
 **Output**: Creates `presentation_cited.pptx` with formatted citations and bibliography.
@@ -47,16 +47,16 @@ python pptx_cite.py presentation.pptx references.bib
 
 ```bash
 # Custom configuration
-python pptx_cite.py presentation.pptx -c config.yaml
+python -m pptx_cite presentation.pptx -c config.yaml
 
 # Specify output filename
-python pptx_cite.py presentation.pptx -o final_presentation.pptx
+python -m pptx_cite presentation.pptx -o final_presentation.pptx
 
 # Custom starting number for citations (default: 1)
-python pptx_cite.py presentation.pptx -s 5  # Citations start at [5], [6], [7]...
+python -m pptx_cite presentation.pptx -s 5  # Citations start at [5], [6], [7]...
 
 # Combine options
-python pptx_cite.py presentation.pptx references.bib -c config.yaml -o output.pptx -s 10
+python -m pptx_cite presentation.pptx references.bib -c config.yaml -o output.pptx -s 10
 ```
 
 ## How to Use in PowerPoint
@@ -103,8 +103,8 @@ cite_style: 'numeric'
 For numeric citation styles, you can customize the starting number using the `-s` or `--start-number` option:
 
 ```bash
-python pptx_cite.py presentation.pptx -s 5  # Citations: [5], [6], [7], etc.
-python pptx_cite.py presentation.pptx --start-number 10  # Citations: [10], [11], [12], etc.
+python -m pptx_cite presentation.pptx -s 5  # Citations: [5], [6], [7], etc.
+python -m pptx_cite presentation.pptx --start-number 10  # Citations: [10], [11], [12], etc.
 ```
 
 This is useful when:
@@ -171,9 +171,9 @@ This is useful when:
 
 2. **Create a .bib file** (e.g., `presentation.bib`) with your sources
 
-3. **Run the script**:
+3. **Run the main script**:
    ```bash
-   python pptx_cite.py presentation.pptx
+   python -m pptx_cite presentation.pptx
    ```
 
 4. **Open `presentation_cited.pptx`** to see:
